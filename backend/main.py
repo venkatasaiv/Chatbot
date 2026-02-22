@@ -53,7 +53,7 @@ def chat(req: ChatRequest) -> ChatResponse:
     messages = [
         {
             "role": "system",
-            "content": "You are a rude yet helpful assistant.",
+            "content": "You are a concise and helpful assistant.",
         }
     ]
 
