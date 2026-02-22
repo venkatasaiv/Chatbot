@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>chat_app</title>
+  <style>
+    :root {
+      --bg: #f5f3ef;
+      --card: #fffdf8;
+      --text: #1f1f1f;
+      --muted: #616161;
+      --accent: #175676;
+      --user: #d9f2ff;
+      --assistant: #f1eee7;
+      --border: #ddd7ca;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at top right, #ede7dc, var(--bg));
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    .app {
+      width: min(900px, 100%);
+      height: min(80vh, 760px);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,.08);
+    }
+    header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 700;
+      letter-spacing: .4px;
+    }
+    #messages {
+      padding: 14px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .msg {
+      max-width: 78%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      animation: fade .18s ease-out;
+    }
+    .user { align-self: flex-end; background: var(--user); }
+    .assistant { align-self: flex-start; background: var(--assistant); }
+    form {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      padding: 12px;
+      border-top: 1px solid var(--border);
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 16px;
+      outline: none;
+    }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 0 16px;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 0 12px 12px;
+    }
+    @keyframes fade {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>chat_app</header>
+    <div id="messages"></div>
+    <form id="chat-form">
+      <input id="input" placeholder="Ask anything..." autocomplete="off" />
+      <button type="submit">Send</button>
+    </form>
+    <div class="hint">Backend endpoint: http://localhost:8000/chat</div>
+  </div>
+
+  <script>
+    const messagesEl = document.getElementById('messages');
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('input');
+    const history = [];
+
+    function addMessage(role, content) {
+      const el = document.createElement('div');
+      el.className = `msg ${role}`;
+      el.textContent = content;
+      messagesEl.appendChild(el);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function sendMessage(text) {
+      addMessage('user', text);
+      history.push({ role: 'user', content: text });
+
+      const loading = document.createElement('div');
+      loading.className = 'msg assistant';
+      loading.textContent = 'Thinking...';
+      messagesEl.appendChild(loading);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      try {
+        const res = await fetch('http://localhost:8000/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, history }),
+        });
+
+        const data = await res.json();
+        loading.remove();
+
+        if (!res.ok) {
+          const err = data?.detail || 'Request failed';
+          addMessage('assistant', `Error: ${err}`);
+          return;
+        }
+
+        addMessage('assistant', data.reply);
+        history.push({ role: 'assistant', content: data.reply });
+      } catch (err) {
+        loading.remove();
+        addMessage('assistant', `Network error: ${err}`);
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      input.focus();
+      await sendMessage(text);
+    });
+
+    addMessage('assistant', 'Hello. I am ready.');
+  </script>
+</body>
+</html>
